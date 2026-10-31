@@ -1,53 +1,22 @@
 /**
- * India-related Carapis platform slugs as listed in the provider documentation (docs.carapis.com/platforms,
- * retrieved 2026-10-31). `docsStatus` records what each platform page says — it is not live verification.
- * The authoritative list for our account is the provider's own sources endpoint once a key is available.
+ * Indian marketplace sources MotoScope is built for, with what the provider's documentation says about them
+ * (docs.carapis.com/platforms, retrieved 2026-10-31). Whether a source is actually activated is decided only by the
+ * account's `/sources/` response — never by this list.
  */
-export interface CarapisSourceInfo {
-  slug: string;
+export interface IndianSourceInfo {
+  code: string;
   name: string;
-  /** Vehicle types as described on the provider's platform page, or null when we have not checked that page. */
-  docsVehicleTypes: string | null;
-  docsStatus: "on_request" | "not_checked";
+  /** As described by the provider's documentation (not verified data). */
+  docsDescription: string;
 }
 
-export const indianCarapisSources: CarapisSourceInfo[] = [
-  {
-    slug: "cardekho",
-    name: "CarDekho",
-    docsVehicleTypes: "Used, new and dealer cars",
-    docsStatus: "on_request",
-  },
-  { slug: "carwale", name: "CarWale", docsVehicleTypes: "Used and new cars", docsStatus: "on_request" },
-  {
-    slug: "bikewale",
-    name: "BikeWale",
-    docsVehicleTypes: "Motorcycles and scooters (new)",
-    docsStatus: "on_request",
-  },
-  {
-    slug: "cars24-india",
-    name: "Cars24 India",
-    docsVehicleTypes: "Used cars and motorcycles",
-    docsStatus: "on_request",
-  },
-  { slug: "cartrade", name: "CarTrade", docsVehicleTypes: null, docsStatus: "not_checked" },
-  { slug: "droom", name: "Droom", docsVehicleTypes: null, docsStatus: "not_checked" },
-  { slug: "spinny", name: "Spinny", docsVehicleTypes: null, docsStatus: "not_checked" },
-  { slug: "zigwheels", name: "ZigWheels", docsVehicleTypes: null, docsStatus: "not_checked" },
-  { slug: "olx-india", name: "OLX India", docsVehicleTypes: null, docsStatus: "not_checked" },
-  {
-    slug: "mahindra-first-choice",
-    name: "Mahindra First Choice",
-    docsVehicleTypes: null,
-    docsStatus: "not_checked",
-  },
-  {
-    slug: "maruti-true-value",
-    name: "Maruti Suzuki True Value",
-    docsVehicleTypes: null,
-    docsStatus: "not_checked",
-  },
-  { slug: "team-bhp", name: "Team-BHP classifieds", docsVehicleTypes: null, docsStatus: "not_checked" },
-  { slug: "truebil", name: "Truebil", docsVehicleTypes: null, docsStatus: "not_checked" },
+export const indianSources: IndianSourceInfo[] = [
+  { code: "bikewale", name: "BikeWale", docsDescription: "New motorcycles and scooters" },
+  { code: "carwale", name: "CarWale", docsDescription: "New and used cars (dealer and private)" },
+  { code: "cars24-india", name: "Cars24 India", docsDescription: "Used cars" },
 ];
+
+export function sourceName(code: string | null | undefined): string {
+  if (!code) return "Unknown source";
+  return indianSources.find((s) => s.code === code)?.name ?? code;
+}

@@ -1,4 +1,9 @@
-import { CARAPIS_DEFAULT_BASE_URL, isCarapisConfigured, normaliseBaseUrl } from "@/lib/carapis/config";
+import {
+  CARAPIS_DEFAULT_BASE_URL,
+  enabledVehicleSources,
+  isCarapisConfigured,
+  normaliseBaseUrl,
+} from "@/lib/carapis/config";
 import { route } from "@/lib/http/route";
 
 export const dynamic = "force-dynamic";
@@ -22,9 +27,9 @@ export const GET = route({ rateLimit: "public-read" }, async () => {
       configured: isCarapisConfigured(),
       baseUrl: baseUrlValid ? baseUrl : null,
       baseUrlValid,
-      liveVerification: "not_performed",
-      endpoints: { listings: true, listingDetail: false },
-      documentation: "https://docs.carapis.com/api/getting-started",
+      enabledSources: enabledVehicleSources(),
+      endpoints: { list: "/vehicles/", detail: "/vehicles/{id}/", sources: "/sources/" },
+      activation: "/api/v1/vehicles/sources",
     },
   };
   return new Response(JSON.stringify(body), {

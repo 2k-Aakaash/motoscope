@@ -1,42 +1,55 @@
 import "server-only";
 import type { CarapisConfig } from "./config";
 import { CarapisError, errorForStatus } from "./errors";
-import type { CarapisErrorBody, CarapisListingsQuery, CarapisListingsResponse } from "./types";
+import type {
+  CarapisPage,
+  CarapisSource,
+  CarapisVehicle,
+  CarapisVehicleDetail,
+  CarapisVehicleQuery,
+} from "./types";
 
 export const CARAPIS_TIMEOUT_MS = 10_000;
-/** Responses are reused for 30 minutes: quotas count every request (free plan: 100/day). */
-export const CARAPIS_REVALIDATE_SECONDS = 1800;
+/** Listing data is reused for 10 minutes (availability changes; quota is counted per request). */
+export const LISTINGS_REVALIDATE_SECONDS = 600;
+/** The account's source list changes rarely. */
+export const SOURCES_REVALIDATE_SECONDS = 3600;
 
 interface RequestOptions {
   timeoutMs?: number;
+  revalidate?: number;
   /** Injected in tests; defaults to the global fetch. */
   fetchImpl?: typeof fetch;
 }
 
-/** Builds the documented query string, omitting undefined values. */
-export function buildListingsUrl(baseUrl: string, query: CarapisListingsQuery): string {
-  const url = new URL(`${baseUrl}/listings`);
-  for (const [key, value] of Object.entries(query)) {
-    if (value !== undefined && value !== "") url.searchParams.set(key, String(value));
+export function buildUrl(baseUrl: string, path: string, params: Record<string, unknown> = {}): string {
+  const url = new URL(`${baseUrl}${path}`);
+  for (const [key, value] of Object.entries(params)) {
+    if (value !== undefined && value !== null && value !== "") url.searchParams.set(key, String(value));
   }
   return url.toString();
 }
 
 /**
- * GET /listings (documented Carapis endpoint). One attempt only: no automatic retries, so a rate limit (429) or an
- * auth failure (401/403) is never hammered; the caller gets a typed CarapisError instead.
+ * One GET against Carapis. Single attempt — no automatic retries, so 401/403/429 are never hammered.
+ * Error bodies seen live: `{ code, detail }` and `{ detail, valid_parameters }` (documented: `{ error: { code } }`);
+ * only the code is kept, for logs. Provider text is never returned to MotoScope clients.
  */
-export async function fetchListings(
+async function getJson<T>(
   config: CarapisConfig,
-  query: CarapisListingsQuery,
-  { timeoutMs = CARAPIS_TIMEOUT_MS, fetchImpl = fetch }: RequestOptions = {},
-): Promise<CarapisListingsResponse> {
+  url: string,
+  {
+    timeoutMs = CARAPIS_TIMEOUT_MS,
+    revalidate = LISTINGS_REVALIDATE_SECONDS,
+    fetchImpl = fetch,
+  }: RequestOptions,
+): Promise<T> {
   let response: Response;
   try {
-    response = await fetchImpl(buildListingsUrl(config.baseUrl, query), {
+    response = await fetchImpl(url, {
       headers: { Authorization: `Bearer ${config.apiKey}`, Accept: "application/json" },
       signal: AbortSignal.timeout(timeoutMs),
-      next: { revalidate: CARAPIS_REVALIDATE_SECONDS, tags: ["carapis"] },
+      next: { revalidate, tags: ["carapis"] },
     });
   } catch (error) {
     const name = (error as { name?: string } | null)?.name;
@@ -53,19 +66,58 @@ export async function fetchListings(
   }
 
   if (!response.ok) {
-    // Documented body: { error: { code, message } }. The live server was observed (2026-10-31) to answer
-    // { code, detail } instead, so both are read — for logging only; provider text is never returned to clients.
-    const errorBody = body as (CarapisErrorBody & { code?: unknown }) | undefined;
-    const upstreamCode = errorBody?.error?.code ?? errorBody?.code;
-    throw errorForStatus(response.status, typeof upstreamCode === "string" ? upstreamCode : undefined);
+    const b = body as { code?: unknown; error?: { code?: unknown } } | undefined;
+    const code = b?.error?.code ?? b?.code;
+    throw errorForStatus(response.status, typeof code === "string" ? code : undefined);
   }
+  if (body === undefined || body === null || typeof body !== "object") {
+    throw new CarapisError("CARAPIS_INVALID_RESPONSE", undefined, response.status);
+  }
+  return body as T;
+}
 
-  if (!body || typeof body !== "object" || Array.isArray(body)) {
-    throw new CarapisError("CARAPIS_INVALID_RESPONSE", undefined, response.status);
+/** GET /vehicles/ — paginated list (verified). */
+export async function fetchVehicles(
+  config: CarapisConfig,
+  query: CarapisVehicleQuery,
+  options: RequestOptions = {},
+): Promise<CarapisPage<CarapisVehicle>> {
+  const body = await getJson<CarapisPage<CarapisVehicle>>(
+    config,
+    buildUrl(config.baseUrl, "/vehicles/", { ...query }),
+    options,
+  );
+  if (Array.isArray(body) || (body.results !== undefined && !Array.isArray(body.results))) {
+    throw new CarapisError("CARAPIS_INVALID_RESPONSE");
   }
-  const results = (body as CarapisListingsResponse).results;
-  if (results !== undefined && !Array.isArray(results)) {
-    throw new CarapisError("CARAPIS_INVALID_RESPONSE", undefined, response.status);
-  }
-  return body as CarapisListingsResponse;
+  return body;
+}
+
+/** GET /vehicles/{id}/ — one vehicle with detail-only fields (verified). */
+export async function fetchVehicle(
+  config: CarapisConfig,
+  id: string,
+  options: RequestOptions = {},
+): Promise<CarapisVehicleDetail> {
+  const body = await getJson<CarapisVehicleDetail>(
+    config,
+    buildUrl(config.baseUrl, `/vehicles/${encodeURIComponent(id)}/`),
+    options,
+  );
+  if (Array.isArray(body)) throw new CarapisError("CARAPIS_INVALID_RESPONSE");
+  return body;
+}
+
+/** GET /sources/ — the sources this key can query (verified: a plain JSON array). */
+export async function fetchSources(
+  config: CarapisConfig,
+  options: RequestOptions = {},
+): Promise<CarapisSource[]> {
+  const body = await getJson<unknown>(config, buildUrl(config.baseUrl, "/sources/"), {
+    revalidate: SOURCES_REVALIDATE_SECONDS,
+    ...options,
+  });
+  const list = Array.isArray(body) ? body : (body as { results?: unknown }).results;
+  if (!Array.isArray(list)) throw new CarapisError("CARAPIS_INVALID_RESPONSE");
+  return list as CarapisSource[];
 }

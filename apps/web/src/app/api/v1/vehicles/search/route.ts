@@ -1,15 +1,15 @@
 import { ValidationError } from "@/lib/http/errors";
 import { clientKey, tryAcquire } from "@/lib/http/rate-limit";
 import { route } from "@/lib/http/route";
-import { vehicleError, vehicleErrorFrom, vehicleSuccess } from "@/lib/vehicles/envelope";
+import { vehicleError, vehicleErrorFrom, vehicleJson } from "@/lib/vehicles/envelope";
 import { hasSearchFilter, parseVehiclesQuery } from "@/lib/vehicles/query";
 import { listVehicles } from "@/lib/vehicles/service";
 
 export const dynamic = "force-dynamic";
 
 /**
- * Filtered search over Carapis listings. The provider has no free-text search, so this uses only its documented
- * filters and requires at least one of: make, model, year_min, year_max, price_min, price_max (plus `source`).
+ * Search within one activated source. Same parameters as /api/v1/vehicles; `q` maps to the provider's `search`
+ * parameter. At least one search term or filter besides `source` is required.
  */
 export const GET = route({}, async ({ request, url, correlationId }) => {
   if (!tryAcquire("provider", clientKey(request))) {
@@ -18,11 +18,9 @@ export const GET = route({}, async ({ request, url, correlationId }) => {
   try {
     const query = parseVehiclesQuery(url.searchParams);
     if (!hasSearchFilter(query)) {
-      throw new ValidationError({
-        filters: ["Provide at least one of: make, model, year_min, year_max, price_min, price_max."],
-      });
+      throw new ValidationError({ q: ["Provide a search term (q) or at least one filter besides source."] });
     }
-    return vehicleSuccess(await listVehicles(query));
+    return vehicleJson({ ...(await listVehicles(query)) });
   } catch (error) {
     return vehicleErrorFrom(error, correlationId);
   }

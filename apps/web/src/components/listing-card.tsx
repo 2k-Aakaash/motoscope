@@ -1,28 +1,46 @@
-import type { MarketplaceVehicle } from "@/lib/carapis/normalize";
+import Link from "next/link";
+import type { Vehicle } from "@/lib/carapis/normalize";
+import { sourceName } from "@/lib/carapis/sources";
 import { formatMoney, formatNumber } from "@/lib/format";
 import { MotorcyclePlaceholder } from "./motorcycle-placeholder";
 
+export function ListingPrice({ price }: { price: Vehicle["price"] }) {
+  if (price.amount === null || price.currency === null) {
+    return <span className="text-sm text-muted">No price in listing</span>;
+  }
+  return (
+    <span className="flex flex-col">
+      <span className="font-semibold tabular-nums">{formatMoney(price.amount, price.currency)}</span>
+      <span className="text-xs text-muted">Seller&apos;s asking price</span>
+    </span>
+  );
+}
+
 /** A third-party marketplace listing. Labelled as such: never presented as official specifications or prices. */
-export function ListingCard({ vehicle, sourceName }: { vehicle: MarketplaceVehicle; sourceName: string }) {
+export function ListingCard({ vehicle }: { vehicle: Vehicle }) {
+  const name =
+    [vehicle.manufacturer, vehicle.model, vehicle.variant].filter(Boolean).join(" ") || "Unnamed listing";
   const facts = [
     vehicle.year !== null ? { label: "Year", value: String(vehicle.year) } : null,
-    vehicle.fuelType ? { label: "Fuel", value: vehicle.fuelType } : null,
-    vehicle.transmission ? { label: "Transmission", value: vehicle.transmission } : null,
-    vehicle.odometer !== null
-      ? { label: "Odometer (as listed)", value: formatNumber(vehicle.odometer, 0) }
+    vehicle.specifications.fuelType ? { label: "Fuel", value: vehicle.specifications.fuelType } : null,
+    vehicle.specifications.transmission
+      ? { label: "Transmission", value: vehicle.specifications.transmission }
       : null,
-    vehicle.location ? { label: "Location", value: vehicle.location } : null,
+    vehicle.specifications.mileage !== null
+      ? { label: "Odometer (as listed)", value: formatNumber(vehicle.specifications.mileage, 0) }
+      : null,
+    vehicle.location.region ? { label: "Region", value: vehicle.location.region } : null,
   ].filter((f) => f !== null);
 
   return (
-    <article className="flex w-full flex-col overflow-hidden rounded-lg border border-line bg-surface">
+    <article className="relative flex w-full flex-col overflow-hidden rounded-lg border border-line bg-surface">
       <div className="relative aspect-[16/10] bg-surface-muted">
         {vehicle.images[0] ? (
           // Third-party listing photos come from arbitrary marketplace hosts, so next/image allow-listing does not apply.
           // eslint-disable-next-line @next/next/no-img-element
           <img
             src={vehicle.images[0]}
-            alt={vehicle.name ? `${vehicle.name} — listing photo` : "Listing photo"}
+            alt={`${name} — listing photo`}
             loading="lazy"
             referrerPolicy="no-referrer"
             className="h-full w-full object-cover"
@@ -31,14 +49,16 @@ export function ListingCard({ vehicle, sourceName }: { vehicle: MarketplaceVehic
           <MotorcyclePlaceholder label="No photo in listing" />
         )}
         <span className="absolute top-2 left-2 rounded bg-surface/90 px-1.5 py-0.5 text-[11px] font-semibold tracking-wide uppercase">
-          Marketplace listing
+          {vehicle.isNewVehicle === true ? "New · marketplace listing" : "Marketplace listing"}
         </span>
       </div>
       <div className="flex flex-1 flex-col gap-3 p-4">
         <div>
-          <p className="text-xs text-muted">via {sourceName}</p>
+          <p className="text-xs text-muted">via {sourceName(vehicle.source)}</p>
           <h2 className="font-display text-lg leading-snug font-semibold">
-            {vehicle.name ?? "Unnamed listing"}
+            <Link href={`/listings/${vehicle.id}`} className="after:absolute after:inset-0">
+              {name}
+            </Link>
           </h2>
         </div>
         {facts.length > 0 && (
@@ -51,27 +71,8 @@ export function ListingCard({ vehicle, sourceName }: { vehicle: MarketplaceVehic
             ))}
           </dl>
         )}
-        <div className="mt-auto flex items-end justify-between gap-3 border-t border-line pt-3">
-          {vehicle.price ? (
-            <span className="flex flex-col">
-              <span className="font-semibold tabular-nums">
-                {formatMoney(vehicle.price.amount, vehicle.price.currency)}
-              </span>
-              <span className="text-xs text-muted">Seller&apos;s asking price</span>
-            </span>
-          ) : (
-            <span className="text-sm text-muted">No price in listing</span>
-          )}
-          {vehicle.sourceUrl && (
-            <a
-              href={vehicle.sourceUrl}
-              className="link text-sm"
-              rel="noopener noreferrer nofollow"
-              target="_blank"
-            >
-              View original
-            </a>
-          )}
+        <div className="mt-auto border-t border-line pt-3">
+          <ListingPrice price={vehicle.price} />
         </div>
       </div>
     </article>

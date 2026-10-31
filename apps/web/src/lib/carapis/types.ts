@@ -1,65 +1,108 @@
 /**
- * Carapis response types, taken from the official documentation (docs.carapis.com, retrieved 2026-10-31).
- * Not yet verified against a live response (no API key available). Every field is optional and `unknown`-tolerant
- * at runtime: normalize.ts validates each value before use.
- *
- * Two shapes are documented and they disagree:
- * - `GET /v2/listings` (Getting started, Listings, JavaScript client): `make`, `model`, `price`, `currency`, …
- * - Platform pages (`/apix/api/vehicles/`): `brand_name`, `model_name`, `price_original`, `price_original_currency`, …
- * This integration calls `/v2/listings` and only reads the second shape's field names as a fallback.
+ * Carapis response shapes, verified against live responses on 2026-10-31 (`/apix/api/sources/`,
+ * `/apix/api/vehicles/`, `/apix/api/vehicles/{id}/`). The provider calls its schema "indicative": every field is
+ * optional here and normalize.ts type-checks each value before use.
  */
 
-/** A listing as documented for `GET /v2/listings`. */
-export interface CarapisListing {
-  id?: string | number;
-  source?: string;
-  make?: string;
-  model?: string;
-  trim?: string;
-  year?: number;
-  /** Odometer reading. The documentation does not state the unit. */
-  mileage?: number;
-  /** Listed price in `currency` (marketplace asking price, not an official price). */
-  price?: number;
-  /** ISO 4217 code, e.g. KRW, EUR. */
-  currency?: string;
-  location?: string;
-  fuel_type?: string;
-  transmission?: string;
-  photos?: string[];
-  dealer?: string;
-  /** Canonical URL of the original listing. */
-  url?: string;
-  // Fallback names documented on platform pages (`/apix` schema).
-  brand_name?: string;
-  model_name?: string;
-  price_original?: number;
-  price_original_currency?: string;
-  last_seen_at?: string;
-}
-
-/** Envelope documented for `GET /v2/listings`. */
-export interface CarapisListingsResponse {
+/** Paginated envelope used by `/vehicles/`. */
+export interface CarapisPage<T> {
   count?: number;
   page?: number;
-  limit?: number;
-  results?: CarapisListing[];
+  pages?: number;
+  page_size?: number;
+  has_next?: boolean;
+  has_previous?: boolean;
+  next_page?: number | null;
+  previous_page?: number | null;
+  results?: T[];
 }
 
-/** Documented error body: `{ "error": { "code": "...", "message": "..." } }`. */
-export interface CarapisErrorBody {
-  error?: { code?: string; message?: string };
+export interface CarapisPhoto {
+  url?: string;
+  thumb_url?: string;
+  original_url?: string;
+  is_main?: boolean;
+  position?: number;
 }
 
-/** Query parameters documented for `GET /v2/listings`. `source` is required. */
-export interface CarapisListingsQuery {
+export interface CarapisSourceLocation {
+  iso2?: string;
+  country_name?: string;
+  region_text?: string;
+}
+
+/** List view item (observed: 32 fields). Note: no listing URL and no engine size in the list view. */
+export interface CarapisVehicle {
+  id?: string;
+  source_code?: string;
+  brand_name?: string;
+  brand_slug?: string;
+  model_name?: string;
+  model_slug?: string;
+  trim?: string;
+  year?: number;
+  /** Original listing price as a decimal string, in `price_original_currency`. */
+  price_original?: string | number;
+  price_original_currency?: string;
+  /** Provider's USD conversion — deliberately not used by MotoScope. */
+  price_usd?: number;
+  mileage?: number;
+  fuel_type?: string;
+  transmission?: string;
+  body_type?: string;
+  color?: string;
+  seller_type?: string;
+  region?: string;
+  source_location?: CarapisSourceLocation;
+  is_new_vehicle?: boolean;
+  is_available?: boolean;
+  status?: string;
+  first_seen_at?: string;
+  last_seen_at?: string;
+  thumb?: CarapisPhoto;
+  photos?: CarapisPhoto[];
+}
+
+/** Detail view = list view + 21 more fields (observed). */
+export interface CarapisVehicleDetail extends CarapisVehicle {
+  listing_url?: string;
+  listing_id?: string;
+  engine_cc?: number | null;
+  seat_count?: number | null;
+  drive_type?: string;
+  description?: string;
+}
+
+/** `/sources/`: the sources this API key can query (authoritative per the provider). */
+export interface CarapisSource {
+  code?: string;
+  name?: string;
+  country?: string;
+  region?: string;
+  /** Observed values: "live", "on_demand". */
+  availability?: string;
+  last_parsed_at?: string;
+}
+
+/** Query parameters accepted by `/vehicles/` (the provider lists them in its 400 response for unknown parameters). */
+export interface CarapisVehicleQuery {
   source: string;
-  make?: string;
+  brand?: string;
   model?: string;
-  year_min?: number;
-  year_max?: number;
-  price_min?: number;
-  price_max?: number;
-  limit?: number;
+  search?: string;
+  min_year?: number;
+  max_year?: number;
+  min_price?: number;
+  max_price?: number;
+  /** Currency the price filters are expressed in. Without it the provider filters on its USD conversion. */
+  price_currency?: string;
+  min_engine_cc?: number;
+  max_engine_cc?: number;
+  fuel_type?: string;
+  transmission?: string;
+  body_type?: string;
+  is_new_vehicle?: boolean;
+  available_only?: boolean;
   page?: number;
+  page_size?: number;
 }
