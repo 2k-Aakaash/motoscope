@@ -1,0 +1,110 @@
+@import "tailwindcss";
+
+/*
+ * MotoScope design tokens. Neutral, technical palette with one accent (signal orange).
+ * Light and dark themes follow the OS preference; every pair meets WCAG AA for body text.
+ */
+:root {
+  --bg: #f7f7f5;
+  --surface: #ffffff;
+  --surface-muted: #efefec;
+  --fg: #16171a;
+  --muted: #5b5e66;
+  --line: #dcdcd7;
+  --accent: #c2410c;
+  --accent-strong: #9a3412;
+  --accent-soft: #fff1e8;
+  --on-accent: #ffffff;
+  --warn-bg: #fff7db;
+  --warn-fg: #6b4e00;
+  --focus: #2563eb;
+}
+
+@media (prefers-color-scheme: dark) {
+  :root {
+    --bg: #0e0f11;
+    --surface: #16181b;
+    --surface-muted: #1d2024;
+    --fg: #ececea;
+    --muted: #a0a3ab;
+    --line: #2b2e33;
+    --accent: #fb8c4a;
+    --accent-strong: #ffb17f;
+    --accent-soft: #2a1a10;
+    --on-accent: #14100d;
+    --warn-bg: #2d2610;
+    --warn-fg: #f3d27a;
+    --focus: #7aa7ff;
+  }
+}
+
+@theme inline {
+  --color-bg: var(--bg);
+  --color-surface: var(--surface);
+  --color-surface-muted: var(--surface-muted);
+  --color-fg: var(--fg);
+  --color-muted: var(--muted);
+  --color-line: var(--line);
+  --color-accent: var(--accent);
+  --color-accent-strong: var(--accent-strong);
+  --color-accent-soft: var(--accent-soft);
+  --color-on-accent: var(--on-accent);
+  --color-warn-bg: var(--warn-bg);
+  --color-warn-fg: var(--warn-fg);
+  --font-sans: var(--font-inter), ui-sans-serif, system-ui, sans-serif;
+  --font-display: var(--font-display-face), var(--font-inter), ui-sans-serif, system-ui, sans-serif;
+}
+
+html {
+  color-scheme: light dark;
+  -webkit-text-size-adjust: 100%;
+}
+
+body {
+  background: var(--bg);
+  color: var(--fg);
+  font-family: var(--font-sans);
+}
+
+:focus-visible {
+  outline: 2px solid var(--focus);
+  outline-offset: 2px;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  *,
+  *::before,
+  *::after {
+    transition-duration: 0.01ms !important;
+    animation-duration: 0.01ms !important;
+  }
+}
+
+/* Reusable primitives. @utility (not @layer) so they can be composed with @apply. */
+@utility container-page {
+  @apply mx-auto w-full max-w-6xl px-4 sm:px-6;
+}
+
+@utility btn {
+  @apply inline-flex items-center justify-center gap-2 rounded-md px-4 py-2 text-sm font-semibold transition-colors;
+}
+
+@utility btn-primary {
+  @apply btn bg-accent text-on-accent hover:bg-accent-strong;
+}
+
+@utility btn-secondary {
+  @apply btn border border-line bg-surface text-fg hover:bg-surface-muted;
+}
+
+@utility input {
+  @apply w-full rounded-md border border-line bg-surface px-3 py-2 text-sm text-fg placeholder:text-muted;
+}
+
+@utility eyebrow {
+  @apply text-xs font-semibold tracking-[0.14em] text-accent uppercase;
+}
+
+@utility link {
+  @apply font-medium text-accent underline-offset-4 hover:underline;
+}

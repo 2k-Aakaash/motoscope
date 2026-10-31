@@ -1,0 +1,42 @@
+/** Well-known specification keys referenced by code (filters, cards, comparison). */
+export const SpecKeys = {
+  EngineType: "engine_type",
+  DisplacementCc: "displacement_cc",
+  Cylinders: "cylinders",
+  Cooling: "cooling",
+  FuelType: "fuel_type",
+  FuelSystem: "fuel_system",
+  MaxPowerKw: "max_power_kw",
+  MaxPowerRpm: "max_power_rpm",
+  MaxTorqueNm: "max_torque_nm",
+  MaxTorqueRpm: "max_torque_rpm",
+  TopSpeedKmh: "top_speed_kmh",
+  Transmission: "transmission",
+  Gears: "gears",
+  SeatHeightMm: "seat_height_mm",
+  KerbWeightKg: "kerb_weight_kg",
+  GroundClearanceMm: "ground_clearance_mm",
+  WheelbaseMm: "wheelbase_mm",
+  FuelTankL: "fuel_tank_l",
+  BrakeFront: "brake_front",
+  BrakeRear: "brake_rear",
+  Abs: "abs",
+  SuspensionFront: "suspension_front",
+  SuspensionRear: "suspension_rear",
+  WheelType: "wheel_type",
+  TyreFront: "tyre_front",
+  TyreRear: "tyre_rear",
+  InstrumentCluster: "instrument_cluster",
+  Connectivity: "connectivity",
+  RideModes: "ride_modes",
+  TractionControl: "traction_control",
+  Headlamp: "headlamp",
+  ClaimedMileageKmpl: "claimed_mileage_kmpl",
+  ClaimedRangeKm: "claimed_range_km",
+  BatteryKwh: "battery_kwh",
+  ChargingTimeH: "charging_time_h",
+} as const;
+
+export const FuelTypes = ["Petrol", "Electric", "CNG", "Flex-fuel"] as const;
+export const Transmissions = ["Manual", "CVT", "DCT", "Single-speed"] as const;
+export const AbsOptions = ["None", "Single-channel", "Dual-channel", "Cornering"] as const;
